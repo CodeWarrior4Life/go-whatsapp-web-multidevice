@@ -826,6 +826,12 @@ func (s *scheduledSendService) SendForward(ctx context.Context, req domainSend.F
 	}
 	return s.scheduler.Create(ctx, "forward", req.Phone, "Forwarded message", req.ScheduleOptions, req, nil)
 }
+func (s *scheduledSendService) GetInteractive(ctx context.Context, req domainSend.InteractiveRequest) (domainSend.InteractiveResponse, error) {
+	return s.base.GetInteractive(ctx, req)
+}
+func (s *scheduledSendService) SendPress(ctx context.Context, req domainSend.PressRequest) (domainSend.PressResponse, error) {
+	return s.base.SendPress(ctx, req)
+}
 
 var _ domainSend.IScheduleUsecase = (*ScheduleService)(nil)
 var _ domainSend.ISendUsecase = (*scheduledSendService)(nil)

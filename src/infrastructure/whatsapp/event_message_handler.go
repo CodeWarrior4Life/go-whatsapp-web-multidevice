@@ -48,6 +48,9 @@ func handleMessage(ctx context.Context, evt *events.Message, chatStorageRepo dom
 		log.Errorf("Failed to store incoming message %s: %v", evt.Info.ID, err)
 	}
 
+	// Keep the raw proto of business prompts so their options can be pressed.
+	SaveInteractivePrompt(client, evt)
+
 	// Handle image message if present
 	handleImageMessage(ctx, evt, client)
 

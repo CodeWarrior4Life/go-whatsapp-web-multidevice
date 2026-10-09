@@ -37,6 +37,13 @@ type IForwardSender interface {
 	SendForward(ctx context.Context, request ForwardRequest) (response GenericResponse, err error)
 }
 
+// IInteractivePresser reads and taps business prompts (buttons, lists,
+// template quick replies, native-flow buttons) by message id
+type IInteractivePresser interface {
+	GetInteractive(ctx context.Context, request InteractiveRequest) (response InteractiveResponse, err error)
+	SendPress(ctx context.Context, request PressRequest) (response PressResponse, err error)
+}
+
 // ISendUsecase combines all sender interfaces for backward compatibility
 type ISendUsecase interface {
 	ITextSender
@@ -44,4 +51,5 @@ type ISendUsecase interface {
 	IInteractionSender
 	IPresenceSender
 	IForwardSender
+	IInteractivePresser
 }

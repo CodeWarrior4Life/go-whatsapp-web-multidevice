@@ -33,6 +33,8 @@ func InitRestMessage(app fiber.Router, service domainMessage.IMessageUsecase, se
 	app.Post("/message/:message_id/unstar", rest.UnstarMessage)
 	app.Post("/message/:message_id/forward", rest.ForwardMessage)
 	app.Get("/message/:message_id/download", rest.DownloadMedia)
+	app.Get("/message/:message_id/interactive", rest.GetInteractive)
+	app.Post("/message/:message_id/press", rest.PressInteractive)
 	return rest
 }
 
@@ -254,4 +256,36 @@ func publicStaticPath(filePath string) string {
 		parts[i] = url.PathEscape(part)
 	}
 	return "/statics/" + strings.Join(parts, "/")
+}
+
+func (controller *Message) GetInteractive(c fiber.Ctx) error {
+	request := domainSend.InteractiveRequest{MessageID: c.Params("message_id")}
+
+	response, err := controller.SendService.GetInteractive(whatsapp.ContextWithDevice(c.Context(), getDeviceFromCtx(c)), request)
+	utils.PanicIfNeeded(err)
+
+	return c.JSON(utils.ResponseData{
+		Status:  200,
+		Code:    "SUCCESS",
+		Message: "Interactive prompt",
+		Results: response,
+	})
+}
+
+func (controller *Message) PressInteractive(c fiber.Ctx) error {
+	var request domainSend.PressRequest
+	err := c.Bind().Body(&request)
+	utils.PanicIfNeeded(err)
+
+	request.MessageID = c.Params("message_id")
+
+	response, err := controller.SendService.SendPress(whatsapp.ContextWithDevice(c.Context(), getDeviceFromCtx(c)), request)
+	utils.PanicIfNeeded(err)
+
+	return c.JSON(utils.ResponseData{
+		Status:  200,
+		Code:    "SUCCESS",
+		Message: response.Status,
+		Results: response,
+	})
 }
