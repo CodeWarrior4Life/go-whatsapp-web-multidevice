@@ -21,8 +21,8 @@ var (
 	// Web UI (gowa-ui) runtime download settings. The dashboard is a separate
 	// project released as a single HTML file; gowa fetches the latest release
 	// asset and serves it at "/".
-	AppUIEnabled        = true
-	AppUIAutoUpdate     = true
+	AppUIEnabled        = false // lattice fork: no runtime UI download from GitHub unless APP_UI_ENABLED=true
+	AppUIAutoUpdate     = false
 	AppUIRepo           = "aldinokemal/gowa-ui"
 	AppUIAssetName      = "gowa-ui.html"
 	AppUIUpdateInterval = 3 * time.Hour
