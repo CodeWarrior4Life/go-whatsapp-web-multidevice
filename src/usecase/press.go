@@ -62,6 +62,9 @@ func (service serviceSend) SendPress(ctx context.Context, request domainSend.Pre
 		if verr != nil {
 			return response, verr
 		}
+		if verr = whatsapp.CheckPhoneOverride(chat, forced); verr != nil {
+			return response, pkgError.ValidationError(verr.Error())
+		}
 		chat = forced
 		if participant == rec.SenderJID && strings.HasSuffix(participant, "@lid") {
 			participant = forced.String()

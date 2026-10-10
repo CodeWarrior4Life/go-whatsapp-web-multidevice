@@ -119,6 +119,20 @@ func ReplyAddress(ctx context.Context, client *whatsmeow.Client, rec *Interactiv
 	return chat, participant, nil
 }
 
+// CheckPhoneOverride allows a forced press recipient only when the stored
+// chat could not be resolved off its LID, or when it names the number the
+// chat already resolved to. A press quotes the whole prompt, so a free
+// override would leak it to any number.
+func CheckPhoneOverride(resolved, forced types.JID) error {
+	if resolved.Server == types.HiddenUserServer {
+		return nil
+	}
+	if forced.ToNonAD() == resolved.ToNonAD() {
+		return nil
+	}
+	return fmt.Errorf("phone override %s refused: the prompt's chat already resolves to %s", forced.User, resolved.User)
+}
+
 // LoadInteractivePrompt returns the stored prompt for messageID.
 func LoadInteractivePrompt(client *whatsmeow.Client, messageID string) (*InteractiveRecord, *waE2E.Message, error) {
 	dir, err := interactiveDir(client)

@@ -3,6 +3,8 @@ package whatsapp
 import (
 	"context"
 	"testing"
+
+	"go.mau.fi/whatsmeow/types"
 )
 
 // A 1:1 prompt from a LID must be answered at the sender's phone number:
@@ -34,5 +36,20 @@ func TestReplyAddressUnmappedLIDStaysLID(t *testing.T) {
 	chat, _, err := ReplyAddress(context.Background(), nil, rec)
 	if err != nil || chat.String() != "111@lid" {
 		t.Fatalf("got %s %v", chat, err)
+	}
+}
+
+func TestCheckPhoneOverride(t *testing.T) {
+	lid := types.NewJID("192930568519785", types.HiddenUserServer)
+	pn := types.NewJID("573167668245", types.DefaultUserServer)
+	other := types.NewJID("15550001111", types.DefaultUserServer)
+	if err := CheckPhoneOverride(lid, pn); err != nil {
+		t.Fatalf("unresolved LID must allow an override: %v", err)
+	}
+	if err := CheckPhoneOverride(pn, pn); err != nil {
+		t.Fatalf("override equal to the resolved number must pass: %v", err)
+	}
+	if err := CheckPhoneOverride(pn, other); err == nil {
+		t.Fatal("override to a different number on a resolved chat must be refused")
 	}
 }
