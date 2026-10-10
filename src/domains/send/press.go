@@ -22,6 +22,9 @@ type PressRequest struct {
 	OptionID  string `json:"option_id,omitempty" form:"option_id"`
 	Index     int    `json:"index,omitempty" form:"index"`
 	Label     string `json:"label,omitempty" form:"label"`
+	// Phone forces the recipient (e.g. 573001234567) when the stored chat is a
+	// LID the client cannot map to a phone number.
+	Phone string `json:"phone,omitempty" form:"phone"`
 	// Advanced: force the response variant when a bot rejects the derived one.
 	ResponseKind string `json:"response_kind,omitempty" form:"response_kind"`
 	FlowName     string `json:"flow_name,omitempty" form:"flow_name"`
@@ -33,4 +36,5 @@ type PressResponse struct {
 	Status       string                  `json:"status"`
 	Pressed      utils.InteractiveOption `json:"pressed"`
 	ResponseKind string                  `json:"response_kind"`
+	SentTo       string                  `json:"sent_to"`
 }

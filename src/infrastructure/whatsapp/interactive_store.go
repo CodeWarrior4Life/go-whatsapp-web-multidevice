@@ -1,6 +1,7 @@
 package whatsapp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,11 +30,14 @@ var safeFileName = regexp.MustCompile(`[^A-Za-z0-9._@-]`)
 
 // InteractiveRecord is a stored inbound interactive prompt.
 type InteractiveRecord struct {
-	MessageID  string    `json:"message_id"`
-	ChatJID    string    `json:"chat_jid"`
-	SenderJID  string    `json:"sender_jid"`
-	ReceivedAt time.Time `json:"received_at"`
-	Proto      []byte    `json:"proto"`
+	MessageID string `json:"message_id"`
+	ChatJID   string `json:"chat_jid"`
+	SenderJID string `json:"sender_jid"`
+	// Phone-number (@s.whatsapp.net) form of the sender when it wrote from a
+	// LID; sends addressed to an unmapped @lid fail with server error 479.
+	SenderAltJID string    `json:"sender_alt_jid,omitempty"`
+	ReceivedAt   time.Time `json:"received_at"`
+	Proto        []byte    `json:"proto"`
 }
 
 func interactiveDir(client *whatsmeow.Client) (string, error) {
@@ -65,6 +70,9 @@ func SaveInteractivePrompt(client *whatsmeow.Client, evt *events.Message) {
 		ReceivedAt: evt.Info.Timestamp,
 		Proto:      raw,
 	}
+	if !evt.Info.SenderAlt.IsEmpty() {
+		rec.SenderAltJID = evt.Info.SenderAlt.ToNonAD().String()
+	}
 	body, _ := json.Marshal(rec)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		logrus.Warnf("interactive: mkdir: %v", err)
@@ -81,6 +89,34 @@ func SaveInteractivePrompt(client *whatsmeow.Client, evt *events.Message) {
 	}
 	logrus.Infof("interactive: stored prompt %s from %s", evt.Info.ID, rec.SenderJID)
 	pruneInteractive(dir)
+}
+
+// ReplyAddress returns where a press reply must go and who to quote: the
+// stored chat, with a LID swapped for its phone-number form (the stored alt,
+// else the client's LID map). A 1:1 chat with an unmapped @lid is rejected by
+// the server with error 479.
+func ReplyAddress(ctx context.Context, client *whatsmeow.Client, rec *InteractiveRecord) (chat types.JID, participant string, err error) {
+	chat, err = types.ParseJID(rec.ChatJID)
+	if err != nil {
+		return chat, "", fmt.Errorf("stored chat jid %q: %w", rec.ChatJID, err)
+	}
+	participant = rec.SenderJID
+	if chat.Server == types.HiddenUserServer {
+		if rec.SenderAltJID != "" && rec.ChatJID == rec.SenderJID {
+			if alt, perr := types.ParseJID(rec.SenderAltJID); perr == nil {
+				chat = alt
+			}
+		}
+		chat = NormalizeJIDFromLID(ctx, chat, client)
+	}
+	if sender, perr := types.ParseJID(rec.SenderJID); perr == nil && sender.Server == types.HiddenUserServer {
+		if rec.SenderAltJID != "" {
+			participant = rec.SenderAltJID
+		} else {
+			participant = NormalizeJIDFromLID(ctx, sender, client).String()
+		}
+	}
+	return chat, participant, nil
 }
 
 // LoadInteractivePrompt returns the stored prompt for messageID.

@@ -4,13 +4,13 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	domainSend "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/send"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/infrastructure/whatsapp"
 	pkgError "github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/error"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/utils"
-	"go.mau.fi/whatsmeow/types"
 )
 
 func (service serviceSend) GetInteractive(ctx context.Context, request domainSend.InteractiveRequest) (response domainSend.InteractiveResponse, err error) {
@@ -53,15 +53,25 @@ func (service serviceSend) SendPress(ctx context.Context, request domainSend.Pre
 	if err != nil {
 		return response, pkgError.ValidationError(err.Error())
 	}
-	reply, err := utils.BuildInteractiveResponse(msg, opt, rec.MessageID, rec.SenderJID, utils.PressOverrides{
+	chat, participant, err := whatsapp.ReplyAddress(ctx, client, rec)
+	if err != nil {
+		return response, err
+	}
+	if request.Phone != "" {
+		forced, verr := utils.ValidateJidWithLogin(client, request.Phone)
+		if verr != nil {
+			return response, verr
+		}
+		chat = forced
+		if participant == rec.SenderJID && strings.HasSuffix(participant, "@lid") {
+			participant = forced.String()
+		}
+	}
+	reply, err := utils.BuildInteractiveResponse(msg, opt, rec.MessageID, participant, utils.PressOverrides{
 		ResponseKind: request.ResponseKind, FlowName: request.FlowName, ParamsJSON: request.ParamsJSON,
 	})
 	if err != nil {
 		return response, pkgError.ValidationError(err.Error())
-	}
-	chat, err := types.ParseJID(rec.ChatJID)
-	if err != nil {
-		return response, fmt.Errorf("stored chat jid %q: %w", rec.ChatJID, err)
 	}
 	ts, err := service.wrapSendMessage(ctx, client, chat, reply, opt.Label)
 	if err != nil {
@@ -70,6 +80,7 @@ func (service serviceSend) SendPress(ctx context.Context, request domainSend.Pre
 	response.MessageID = ts.ID
 	response.Pressed = opt
 	response.ResponseKind = cmp.Or(request.ResponseKind, opt.Kind)
+	response.SentTo = chat.String()
 	response.Status = fmt.Sprintf("Pressed option %d (%q) on %s (server timestamp: %s)", opt.Index, opt.Label, rec.MessageID, ts.Timestamp.String())
 	return response, nil
 }
