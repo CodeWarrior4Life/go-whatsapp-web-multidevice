@@ -75,3 +75,7 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
+
+// Lattice: tulir/whatsmeow#1221 (no <biz> node on button/list responses; the
+// server rejects it with 479 smax-invalid) on the pinned 8b41cfe. TKT-0aa03560.
+replace go.mau.fi/whatsmeow => github.com/CodeWarrior4Life/whatsmeow v0.0.0-20261024162612-b2abd59e70aa
